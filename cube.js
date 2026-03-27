@@ -5,6 +5,14 @@ export class Cube {
         this.centerPoint = centerPoint;
         this.size = size;
         this.points = [];
+        this.faces = [
+            [0, 2, 3, 1], // přední (z+) - opraveno pořadí
+            [4, 5, 7, 6], // zadní (z-)
+            [0, 4, 6, 2], // horní (y+) - opraveno pořadí
+            [1, 3, 7, 5], // dolní (y-)
+            [0, 1, 5, 4], // pravá (x+)
+            [2, 6, 7, 3], // levá (x-) - opraveno pořadí
+        ];
         this.edges = [
             [0, 1],
             [1, 3],
