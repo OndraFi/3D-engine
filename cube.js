@@ -6,28 +6,12 @@ export class Cube {
         this.size = size;
         this.points = [];
         this.faces = [
-            [0, 2, 3, 1], // přední (z+) - opraveno pořadí
+            [0, 2, 3, 1], // přední (z+)
             [4, 5, 7, 6], // zadní (z-)
-            [0, 4, 6, 2], // horní (y+) - opraveno pořadí
+            [0, 4, 6, 2], // horní (y+)
             [1, 3, 7, 5], // dolní (y-)
             [0, 1, 5, 4], // pravá (x+)
-            [2, 6, 7, 3], // levá (x-) - opraveno pořadí
-        ];
-        this.edges = [
-            [0, 1],
-            [1, 3],
-            [3, 2],
-            [2, 0],
-
-            [4, 5],
-            [5, 7],
-            [7, 6],
-            [6, 4],
-
-            [0, 4],
-            [1, 5],
-            [2, 6],
-            [3, 7],
+            [2, 6, 7, 3], // levá (x-)
         ];
         this.maxRotationSpeed = 3;
         this.angles = {
@@ -58,7 +42,7 @@ export class Cube {
         ];
     }
 
-    rotete(angle){
+    rotate(angle){
         const rad = angle * Math.PI / 180;
         this.rotateX(rad);
         this.rotateY(rad);
@@ -95,6 +79,15 @@ export class Cube {
         this.rotateY(-radX);
     }
 
+    rotateBasedOnMousePlayer(controls,player){
+        const radY = controls.yaw * Math.PI /180;
+        const radX = controls.pitch * Math.PI / 180;
+        this.points.forEach((point) => {
+            // this.rotatePointXAroundPoint(point,radX,player.position)
+            this.rotatePointYAroundPoint(point,radY,player.position)
+        })
+    }
+
     rotateX(rad){
         this.points.forEach(point => {
             this.rotatePointX(point, rad);
@@ -123,9 +116,30 @@ export class Cube {
         p.z = newRz + this.centerPoint.z;
     }
 
+    rotatePointXAroundPoint(p,rad,pivot){
+        let rz = p.z - pivot.z;
+        let ry = p.y - pivot.y;
+
+        const newRy = ry * Math.cos(rad) - rz * Math.sin(rad);
+        const newRz = ry * Math.sin(rad) + rz * Math.cos(rad);
+        p.y = newRy + this.centerPoint.y;
+        p.z = newRz + this.centerPoint.z;
+    }
+
     rotatePointY(p,rad){
         let rz = p.z - this.centerPoint.z;
         let rx = p.x - this.centerPoint.x;
+
+        let newRx = rx  * Math.cos(rad) + rz * Math.sin(rad)
+        let newRz = -rx * Math.sin(rad) + rz * Math.cos(rad)
+
+        p.x = newRx + this.centerPoint.x;
+        p.z = newRz + this.centerPoint.z;
+    }
+
+    rotatePointYAroundPoint(p,rad,pivot){
+        let rz = p.z - pivot.z;
+        let rx = p.x - pivot.x;
 
         let newRx = rx  * Math.cos(rad) + rz * Math.sin(rad)
         let newRz = -rx * Math.sin(rad) + rz * Math.cos(rad)
