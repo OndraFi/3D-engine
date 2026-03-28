@@ -142,16 +142,16 @@ export class Renderer {
         return chunksToRender;
     }
 
-    getCubesToDrawFromChunks(chunksToRender) {
+    getCubesToDrawFromChunks(chunksToRender,player) {
         const cubesToDraw = [];
 
         chunksToRender.forEach(chunk => {
             chunk.forEach((row,cubeZ)=>{
                 row.forEach((cube,cubeX)=>{
                     if(cube !== "air"){
-                        const dx = cube.centerPoint.x - game.player.position.x;
-                        const dy = cube.centerPoint.y - game.player.position.y;
-                        const dz = cube.centerPoint.z - game.player.position.z;
+                        const dx = cube.centerPoint.x - player.position.x;
+                        const dy = cube.centerPoint.y - player.position.y;
+                        const dz = cube.centerPoint.z - player.position.z;
                         cube.dist = dx*dx + dy*dy + dz*dz;
                         cube.x = cubeX;
                         cube.z = cubeZ;
@@ -166,7 +166,7 @@ export class Renderer {
 
     drawGame(game, debug = false){
         const chunksToRender = this.getChunksToRender(game);
-        const cubesToDraw = this.getCubesToDrawFromChunks(chunksToRender);
+        const cubesToDraw = this.getCubesToDrawFromChunks(chunksToRender,game.player);
         // SEŘAZENÍ: Od nejvzdálenější (největší dist) po nejbližší
         cubesToDraw.sort((a, b) => b.dist - a.dist);
         // Vykreslení už v dobrém pořadí
@@ -365,7 +365,7 @@ export class Renderer {
             if(center){
                 this.ctx.fillStyle = "black";
                 this.ctx.strokeStyle = "black";
-                this.ctx.strokeText(`x:${x} z:${z}`,center.x,center.y);
+                this.ctx.strokeText(`x:${x} z:${z}`,center.x,center.y -10);
             }
         }
     }
