@@ -13,7 +13,7 @@ canvas.height = CANVAS_SIZE;
 const ctx = canvas.getContext("2d");
 
 const renderer = new Renderer(canvas);
-const controls = new Controls(canvas);
+const controls = new Controls(canvas,gameSelected.checked);
 const game = new Game();
 
 function pxSizeToObjectSize(px){

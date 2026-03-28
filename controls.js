@@ -1,6 +1,6 @@
 export class Controls{
 
-    constructor(canvas){
+    constructor(canvas, gameSelected){
         this.canvas = canvas;
         this.mouseX = 0;
         this.mouseY = 0;
@@ -20,7 +20,8 @@ export class Controls{
         document.addEventListener("keydown", this.keyDownHandler);
         document.addEventListener("keyup", this.keyUpHandler);
         this.canvas.addEventListener("click", () => {
-            this.canvas.requestPointerLock();
+            if(gameSelected)
+                this.canvas.requestPointerLock();
         });
     }
 
