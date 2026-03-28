@@ -13,7 +13,7 @@ canvas.height = CANVAS_SIZE;
 const ctx = canvas.getContext("2d");
 
 const renderer = new Renderer(canvas);
-const controls = new Controls(canvas,gameSelected.checked);
+const controls = new Controls(canvas,gameSelected);
 const game = new Game();
 
 function pxSizeToObjectSize(px){
@@ -37,7 +37,7 @@ function step(){
         renderer.drawCube(cube);
     }else if(gameSelected.checked){
         game.player.updatePosition(controls)
-        console.log(game.player.position.z)
+        // console.log(game.player.position.z)
         renderer.drawGame(game);
         controls.resetGameMouse()
     }
