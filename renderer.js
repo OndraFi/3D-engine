@@ -120,6 +120,24 @@ export class Renderer {
         this.ctx.textBaseline = "middle";
         this.ctx.strokeText("chunk size: " + game.chunkSize, 10, 80);
         this.ctx.strokeText("world size: " + game.worldSize, 10, 90);
+
+        //draw compas
+        this.ctx.beginPath();
+        this.ctx.arc(50, 150, 40, 0, 2 * Math.PI);
+        this.ctx.stroke();
+        //draw ručičku
+        const rad = (-game.player.yaw * Math.PI / 180) - Math.PI / 2;
+        const x = 50 + 40 * Math.cos(rad);
+        const y = 150 + 40 * Math.sin(rad);
+        this.ctx.moveTo(50, 150);
+        this.ctx.lineTo(x,y);
+        this.ctx.stroke();
+        //sever
+        this.ctx.beginPath();
+        this.ctx.arc(50, 110, 4, 0, 2 * Math.PI);
+        this.ctx.fillStyle = "red";
+        this.ctx.fill();
+
     }
 
     getChunksToRender(game){
