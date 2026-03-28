@@ -1,7 +1,9 @@
 export class Controls{
 
     constructor(canvas, gameSelectedRadio){
+        this.debug = false;
         this.canvas = canvas;
+        this.chunkAroundRenderDistance = 1; // 1 - tedy rendrovaný chunk +- 1 - 3x3 chunky. 2 - 5x5 chunků
         this.mouseX = 0;
         this.mouseY = 0;
         this.deltaX = 0;
@@ -37,6 +39,9 @@ export class Controls{
         }
         if(e.code === "KeyS"){
             this.keys.s = true;
+        }
+        if(e.code === "KeyP"){
+            this.debug = !this.debug;
         }
     }
 

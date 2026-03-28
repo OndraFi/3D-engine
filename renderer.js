@@ -11,12 +11,14 @@ export class Renderer {
 
     projectPoint(point) {
         // jednoduchá ochrana proti dělení nulou a bodům za kamerou
+        let z = point.z
         if (point.z <= 0) {
-            return null;
+            z = 0.1
         }
 
-        const x = point.x / point.z;
-        const y = point.y / point.z;
+
+        const x = point.x / z;
+        const y = point.y / z;
 
         const canvasX = ((x + 1) / 2) * this.canvas.width;
         const canvasY = ((-y + 1) / 2) * this.canvas.height;
@@ -35,16 +37,17 @@ export class Renderer {
         this.ctx.fillRect(projected.x - 5, projected.y - 5, 10, 10);
     }
 
-    drawLine(pointA, pointB) {
+    drawLine(pointA, pointB,color = "black") {
         const p1 = this.projectPoint(pointA);
         const p2 = this.projectPoint(pointB);
 
         if (!p1 || !p2) return;
 
+        this.ctx.fillStyle = color;
         this.ctx.beginPath();
         this.ctx.moveTo(p1.x, p1.y);
         this.ctx.lineTo(p2.x, p2.y);
-        this.ctx.strokeStyle = "black";
+        this.ctx.strokeStyle = color;
         this.ctx.stroke();
     }
 
@@ -102,26 +105,77 @@ export class Renderer {
         }
     }
 
-    drawGame(game){
+    drawDebugInfo(game){
+        const player = game.player;
+        this.ctx.fillStyle = "black";
+        this.ctx.strokeStyle = "black";
+        this.ctx.textBaseline = "hanging";
+        this.ctx.strokeText("PLAYER POSITION:", 10, 10);
+        this.ctx.textBaseline = "middle";
+        this.ctx.strokeText("x:" + player.position.x, 10, 30);
+        this.ctx.strokeText("y:" + player.position.y, 10, 40);
+        this.ctx.strokeText("z:" + player.position.z, 10, 50);
+        this.ctx.textBaseline = "hanging";
+        this.ctx.strokeText("WORLD", 10, 60);
+        this.ctx.textBaseline = "middle";
+        this.ctx.strokeText("chunk size: " + game.chunkSize, 10, 80);
+        this.ctx.strokeText("world size: " + game.worldSize, 10, 90);
+    }
+
+    getChunksToRender(game){
+        const chunksToRender = [];
         const p = game.player.position;
         const fullChunkSize = game.chunkSize * game.cubeSize;
         // Zjistíme index chunku, ve kterém je hráč
         const currentChunkX = Math.floor(p.x / fullChunkSize);
         const currentChunkZ = Math.floor(p.z / fullChunkSize);
-
-        // Vykreslíme aktuální chunk a jeho sousedy (okruh 1 chunk)
-        for (let x = currentChunkX - 1; x <= currentChunkX + 1; x++) {
-            for (let z = currentChunkZ - 1; z <= currentChunkZ + 1; z++) {
+        const neighbours = game.controls.chunkAroundRenderDistance;
+        for (let x = currentChunkX - neighbours; x <= currentChunkX + neighbours; x++) {
+            for (let z = currentChunkZ - neighbours; z <= currentChunkZ + neighbours; z++) {
                 // Kontrola, jestli chunk existuje (není mimo hranice světy)
                 if (game.world[x] && game.world[x][z]) {
                     const chunk = game.world[x][z];
-                    chunk.forEach(row => {
-                        row.forEach(cube => {
-                            this.drawGameCube(cube, game.player);
-                        });
-                    });
+                    chunksToRender.push(chunk);
                 }
             }
+        }
+        return chunksToRender;
+    }
+
+    getCubesToDrawFromChunks(chunksToRender) {
+        const cubesToDraw = [];
+
+        chunksToRender.forEach(chunk => {
+            chunk.forEach((row,cubeZ)=>{
+                row.forEach((cube,cubeX)=>{
+                    if(cube !== "air"){
+                        const dx = cube.centerPoint.x - game.player.position.x;
+                        const dy = cube.centerPoint.y - game.player.position.y;
+                        const dz = cube.centerPoint.z - game.player.position.z;
+                        cube.dist = dx*dx + dy*dy + dz*dz;
+                        cube.x = cubeX;
+                        cube.z = cubeZ;
+                        cube.chunk = chunk;
+                        cubesToDraw.push(cube);
+                    }
+                })
+            })
+        })
+        return cubesToDraw;
+    }
+
+    drawGame(game, debug = false){
+        const chunksToRender = this.getChunksToRender(game);
+        const cubesToDraw = this.getCubesToDrawFromChunks(chunksToRender);
+        // SEŘAZENÍ: Od nejvzdálenější (největší dist) po nejbližší
+        cubesToDraw.sort((a, b) => b.dist - a.dist);
+        // Vykreslení už v dobrém pořadí
+        cubesToDraw.forEach(cube => {
+            // Tady zavoláš svou vykreslovací funkci
+            this.drawGameCube(cube, game.player,cube.chunk,cube.x,cube.z,debug );
+        });
+        if(debug){
+            this.drawDebugInfo(game);
         }
     }
 
@@ -176,140 +230,6 @@ export class Renderer {
     //     });
     // }
 
-    // drawGameCube(cube, player) {
-    //     // 1. Příprava úhlu (převod na radiány a otočení směru)
-    //     const rad = -player.yaw * Math.PI / 180;
-    //     const cos = Math.cos(rad);
-    //     const sin = Math.sin(rad);
-    //
-    //     // 2. Transformace bodů: Nejdřív POSUN, pak ROTACE
-    //     const transformedPoints = cube.points.map(p => {
-    //         // Translace (relativně k hráči)
-    //         let dx = p.x - player.position.x;
-    //         let dy = p.y - player.position.y;
-    //         let dz = p.z - player.position.z;
-    //
-    //         // Rotace kolem osy Y (Yaw)
-    //         // x' = x*cos - z*sin
-    //         // z' = x*sin + z*cos
-    //         const rx = dx * cos - dz * sin;
-    //         const rz = dx * sin + dz * cos;
-    //
-    //         return { x: rx, y: dy, z: rz };
-    //     });
-    //
-    //     // 3. Kontrola: Pokud je celá kostka za námi, zahodíme ji
-    //     if (transformedPoints.every(p => p.z <= 0.1)) return;
-    //
-    //     const visibleEdges = new Set();
-    //
-    //     // 4. Výpočet viditelných stěn (Back-face culling)
-    //     cube.faces.forEach((face) => {
-    //         const A = transformedPoints[face[0]];
-    //         const B = transformedPoints[face[1]];
-    //         const C = transformedPoints[face[2]];
-    //
-    //         // Vektory stěny v "relativním" prostoru
-    //         const u = { x: B.x - A.x, y: B.y - A.y, z: B.z - A.z };
-    //         const v = { x: C.x - A.x, y: C.y - A.y, z: C.z - A.z };
-    //
-    //         // Normála
-    //         const n = {
-    //             x: u.y * v.z - u.z * v.y,
-    //             y: u.z * v.x - u.x * v.z,
-    //             z: u.x * v.y - u.y * v.x
-    //         };
-    //
-    //         // Vektor ke kameře (kamera je teď v bodě [0,0,0])
-    //         const toCamera = { x: -A.x, y: -A.y, z: -A.z };
-    //         const dot = n.x * toCamera.x + n.y * toCamera.y + n.z * toCamera.z;
-    //
-    //         if (dot > 0) {
-    //             for (let i = 0; i < 4; i++) {
-    //                 const p1 = face[i];
-    //                 const p2 = face[(i + 1) % 4];
-    //                 const edgeKey = p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
-    //                 visibleEdges.add(edgeKey);
-    //             }
-    //         }
-    //     });
-    //
-    //     // 5. Vykreslení
-    //     visibleEdges.forEach(edgeKey => {
-    //         const [idx1, idx2] = edgeKey.split('-').map(Number);
-    //         // Tady už voláš drawLine s už transformovanými body!
-    //         this.drawLine(transformedPoints[idx1], transformedPoints[idx2]);
-    //     });
-    // }
-
-    // drawGameCube(cube, player) {
-    //     // Převod úhlů na radiány (mínus u obou, aby se svět točil PROTI kameře)
-    //     const radYaw = -player.yaw * Math.PI / 180;
-    //     const radPitch = -player.pitch * Math.PI / 180;
-    //
-    //     const cosY = Math.cos(radYaw);
-    //     const sinY = Math.sin(radYaw);
-    //     const cosP = Math.cos(radPitch);
-    //     const sinP = Math.sin(radPitch);
-    //
-    //     const transformedPoints = cube.points.map(p => {
-    //         // 1. Translace (posun k hráči)
-    //         let dx = p.x - player.position.x;
-    //         let dy = p.y - player.position.y;
-    //         let dz = p.z - player.position.z;
-    //
-    //         // 2. Rotace Yaw (kolem osy Y - do stran)
-    //         let rx = dx * cosY - dz * sinY;
-    //         let rzTemp = dx * sinY + dz * cosY;
-    //
-    //         // 3. Rotace Pitch (kolem osy X - nahoru/dolů)
-    //         // Osa X (rx) zůstává, mění se Y a Z
-    //         let ry = dy * cosP - rzTemp * sinP;
-    //         let rzFinal = dy * sinP + rzTemp * cosP;
-    //
-    //         return { x: rx, y: ry, z: rzFinal };
-    //     });
-    //
-    //     // 4. Clipping (nekreslit, co je za námi)
-    //     if (transformedPoints.every(p => p.z <= 0.1)) return;
-    //
-    //     const visibleEdges = new Set();
-    //
-    //     cube.faces.forEach((face) => {
-    //         const A = transformedPoints[face[0]];
-    //         const B = transformedPoints[face[1]];
-    //         const C = transformedPoints[face[2]];
-    //
-    //         const u = { x: B.x - A.x, y: B.y - A.y, z: B.z - A.z };
-    //         const v = { x: C.x - A.x, y: C.y - A.y, z: C.z - A.z };
-    //
-    //         const n = {
-    //             x: u.y * v.z - u.z * v.y,
-    //             y: u.z * v.x - u.x * v.z,
-    //             z: u.x * v.y - u.y * v.x
-    //         };
-    //
-    //         // Kamera je teď v [0,0,0]
-    //         const toCamera = { x: -A.x, y: -A.y, z: -A.z };
-    //         const dot = n.x * toCamera.x + n.y * toCamera.y + n.z * toCamera.z;
-    //
-    //         if (dot > 0) {
-    //             for (let i = 0; i < 4; i++) {
-    //                 const p1 = face[i];
-    //                 const p2 = face[(i + 1) % 4];
-    //                 const edgeKey = p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
-    //                 visibleEdges.add(edgeKey);
-    //             }
-    //         }
-    //     });
-    //
-    //     visibleEdges.forEach(edgeKey => {
-    //         const [idx1, idx2] = edgeKey.split('-').map(Number);
-    //         this.drawLine(transformedPoints[idx1], transformedPoints[idx2]);
-    //     });
-    // }
-
-
     transformPoint(point, player, cosY, sinY, cosP, sinP) {
         // 1. Translace
         let dx = point.x - player.position.x;
@@ -346,7 +266,29 @@ export class Renderer {
         return (n.x * -A.x + n.y * -A.y + n.z * -A.z) > 0;
     }
 
-    drawGameCube(cube, player) {
+    addFaceToVisible(face,visibleEdges, c){
+
+        for (let i = 0; i < 4; i++) {
+            const p1 = face[i], p2 = face[(i + 1) % 4];
+            let key = p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
+            let color = "black";
+            switch (c) {
+                case 0: color = "red"; break;
+                case 1: color = "green"; break;
+                case 2: color = "yellow"; break;
+                case 3: color = "blue"; break;
+                case 4: color = "purple"; break;
+                case 5: color = "cyan"; break;
+            }
+            key += ";"+color;
+            visibleEdges.add(key);
+        }
+    }
+
+    drawGameCube(cube, player,chunk, x,z,debug= false) {
+        if(x === 5 && z === 2){
+            console.log("air is in draw!!!")
+        }
         const radYaw = -player.yaw * Math.PI / 180;
         const radPitch = -player.pitch * Math.PI / 180;
         const cosY = Math.cos(radYaw), sinY = Math.sin(radYaw);
@@ -361,20 +303,88 @@ export class Renderer {
         if (viewPoints.every(p => p.z <= 0.1)) return;
 
         const visibleEdges = new Set();
+        const visibleFaces = new Set();
 
-        cube.faces.forEach(face => {
+
+
+        cube.faces.forEach((face,i) => {
+
             if (this.isFaceVisible(viewPoints, face)) {
-                for (let i = 0; i < 4; i++) {
-                    const p1 = face[i], p2 = face[(i + 1) % 4];
-                    const key = p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
-                    visibleEdges.add(key);
+                //check if there is neigbor in that direction.
+                // this.addFaceToVisible(face,visibleEdges)
+                if(i === 0){
+                    // console.log(typeof chunk[x][z+1])
+                    if(chunk[z+1] === undefined || chunk[z+1][x] === undefined || chunk[z+1][x] === "air" ) {
+                        this.addFaceToVisible(face,visibleEdges,i)
+                        visibleFaces.add(i);
+                    }
+                }
+                if(i === 1){
+                    // console.log(typeof chunk[x][z-1])
+                    if(chunk[z-1] === undefined || chunk[z-1][x] === undefined || chunk[z-1][x] === "air" ) {
+                        this.addFaceToVisible(face,visibleEdges,i)
+                        visibleFaces.add(i);
+                    }
+                }
+                if(i === 2){
+                    this.addFaceToVisible(face,visibleEdges,i); // zatí furt visible, nemáme y rozměr světa.
+                    visibleFaces.add(i);
+                }
+                if(i === 3){
+                    // není visible, nemáme y rozměr světa
+                }
+                if(i === 4){
+                    if(chunk[z][x+1] === undefined || chunk[z][x+1] === "air" ) {
+                        this.addFaceToVisible(face,visibleEdges,i)
+                        visibleFaces.add(i);
+                    }
+                }
+                if(i === 5){
+                    if(chunk[z][x-1] === undefined || chunk[z][x-1] === "air" ) {
+                        this.addFaceToVisible(face,visibleEdges,i)
+                        visibleFaces.add(i);
+                    }
                 }
             }
         });
 
         visibleEdges.forEach(key => {
-            const [i1, i2] = key.split('-').map(Number);
-            this.drawLine(viewPoints[i1], viewPoints[i2]);
+            let [rest,color] = key.split(";");
+            const [i1, i2] = rest.split('-').map(Number);
+            if(!debug)
+                color = "black";
+            this.drawLine(viewPoints[i1], viewPoints[i2],color);
         });
+        visibleFaces.forEach(key=>{
+            const[i1,i2,i3,i4] = cube.faces[key];
+            this.drawCubeWall(viewPoints[i1],viewPoints[i2],viewPoints[i3],viewPoints[i4]);
+        })
+        if(debug){
+            this.ctx.textBaseline = "middle";
+            const center = this.projectPoint(viewPoints[0])
+            if(center){
+                this.ctx.fillStyle = "black";
+                this.ctx.strokeStyle = "black";
+                this.ctx.strokeText(`x:${x} z:${z}`,center.x,center.y);
+            }
+        }
+    }
+
+    drawCubeWall(viewPoint, viewPoint2, viewPoint3, viewPoint4) {
+        viewPoint = this.projectPoint(viewPoint);
+        viewPoint2 = this.projectPoint(viewPoint2);
+        viewPoint3 = this.projectPoint(viewPoint3);
+        viewPoint4 = this.projectPoint(viewPoint4);
+        if(viewPoint && viewPoint2 && viewPoint3 && viewPoint4) {
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(viewPoint.x,viewPoint.y);
+            this.ctx.lineTo(viewPoint2.x, viewPoint2.y);
+            this.ctx.lineTo(viewPoint3.x, viewPoint3.y);
+            this.ctx.lineTo(viewPoint4.x, viewPoint4.y);
+            this.ctx.closePath();
+            this.ctx.fillStyle= "gray";
+            this.ctx.fill();
+        }
     }
 }

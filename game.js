@@ -1,12 +1,14 @@
 import {Cube} from "./cube.js";
 import {Point} from "./point.js";
 import {Player} from "./player.js";
+import {Controls} from "./controls.js";
 
 export class Game {
-    constructor() {
+    constructor(controls) {
         this.player = new Player();
+        this.controls = controls;
         this.chunkSize = 10;
-        this.worldSize = 10;
+        this.worldSize = 30;
         this.cubeSize = 1;
         this.world = [];
 
@@ -20,13 +22,17 @@ export class Game {
 
     createChunk(cx, cz) {
         const cubes = [];
-        for (let i = 0; i < this.chunkSize; i++) {
-            cubes[i] = [];
-            for (let j = 0; j < this.chunkSize; j++) {
+        for (let iz = 0; iz < this.chunkSize; iz++) {
+            cubes[iz] = [];
+            for (let jx = 0; jx < this.chunkSize; jx++) {
                 // Výpočet pozice: (pozice chunku * velikost chunku) + (pozice kostky v chunku)
-                const x = (cx * this.chunkSize * this.cubeSize) + (j * this.cubeSize);
-                const z = (cz * this.chunkSize * this.cubeSize) + (i * this.cubeSize);
-                cubes[i][j] = new Cube(new Point(x, -0.2, z), this.cubeSize);
+                const x = (cx * this.chunkSize * this.cubeSize) + (jx * this.cubeSize);
+                const z = (cz * this.chunkSize * this.cubeSize) + (iz * this.cubeSize);
+
+                if((iz === 2 || iz ===3) && (jx === 5||jx ===6))
+                    cubes[iz][jx] = "air";
+                else
+                    cubes[iz][jx] = new Cube(new Point(x, -0.2, z), this.cubeSize);
             }
         }
         return cubes;
